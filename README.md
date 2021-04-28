@@ -93,3 +93,11 @@ Status: Image is up to date for botsudo/action-docker-compose@sha256:8729542ca14
 Tagging botsudo/action-docker-compose@sha256:8729542ca14dd459473e15719924d545809ce86a1b8e83c714e7108283841d13 as botsudo/action-docker-compose:latest
 docker.io/botsudo/action-docker-compose:latest
 ```
+
+## Some usefull commands
+
+```sh
+notary delegation list docker.io/botsudo/action-scrutinizer -s https://notary.docker.io
+docker trust signer add --key williamdes.pub williamdes docker.io/botsudo/action-scrutinizer
+docker trust signer add --key williamdes.pub williamdes docker.io/botsudo/action-scrutinizer:latest
+```
