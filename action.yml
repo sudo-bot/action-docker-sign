@@ -1,0 +1,35 @@
+name: 'docker-sign'
+description: 'Sign docker images'
+inputs:
+  image-ref:
+    description: 'The Docker image ref, example: imagename:tag'
+    required: true
+  private-key:
+    description: 'The Docker private key'
+    required: true
+  private-key-passphrase:
+    description: 'The Docker private key passphrase'
+    required: true
+runs:
+  using: "composite"
+  steps:
+    - run: echo "${{ inputs.private-key }}" > ~/.docker/trust/private/private.key
+      shell: sh
+    - run: chmod 600 ~/.docker/trust/private/private.key
+      shell: sh
+    - run: DOCKER_CONTENT_TRUST_REPOSITORY_PASSPHRASE="${{ inputs.private-key-passphrase }}" docker trust key load ~/.docker/trust/private/private.key
+      shell: sh
+      env:
+        DOCKER_CONTENT_TRUST: 1
+    - run: docker trust sign "${{ inputs.image-ref }}"
+      shell: sh
+      env:
+        DOCKER_CONTENT_TRUST: 1
+    - run: docker trust inspect --pretty "${{ inputs.image-ref }}"
+      shell: sh
+      env:
+        DOCKER_CONTENT_TRUST: 1
+    - run: rm ~/.docker/trust/private/private.key
+      shell: sh
+    - run: rm -rf ~/.docker/trust/private
+      shell: sh
