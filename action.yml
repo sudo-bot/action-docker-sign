@@ -4,6 +4,9 @@ inputs:
   image-ref:
     description: 'The Docker image ref, example: imagename:tag'
     required: true
+  private-key-id:
+    description: 'The Docker private key id (hash)'
+    required: true
   private-key:
     description: 'The Docker private key'
     required: true
@@ -15,11 +18,11 @@ runs:
   steps:
     - run: mkdir -p ~/.docker/trust/private/
       shell: sh
-    - run: echo "${{ inputs.private-key }}" > ~/.docker/trust/private/private.key
+    - run: echo "${{ inputs.private-key }}" > ~/.docker/trust/private/${{ inputs.private-key-id }}.key
       shell: sh
-    - run: chmod 600 ~/.docker/trust/private/private.key
+    - run: chmod 600 ~/.docker/trust/private/${{ inputs.private-key-id }}.key
       shell: sh
-    - run: DOCKER_CONTENT_TRUST_REPOSITORY_PASSPHRASE="${{ inputs.private-key-passphrase }}" docker trust key load ~/.docker/trust/private/private.key
+    - run: DOCKER_CONTENT_TRUST_REPOSITORY_PASSPHRASE="${{ inputs.private-key-passphrase }}" docker trust key load ~/.docker/trust/private/${{ inputs.private-key-id }}.key
       shell: sh
       env:
         DOCKER_CONTENT_TRUST: 1
@@ -31,7 +34,7 @@ runs:
       shell: sh
       env:
         DOCKER_CONTENT_TRUST: 1
-    - run: rm ~/.docker/trust/private/private.key
+    - run: rm ~/.docker/trust/private/${{ inputs.private-key-id }}.key
       shell: sh
     - run: rm -rf ~/.docker/trust/private
       shell: sh
