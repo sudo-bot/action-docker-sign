@@ -7,6 +7,7 @@ Sign your Docker images using [Docker Content Trust (DCT)](https://docs.docker.c
 You can forge the key following [this manual](https://docs.docker.com/engine/security/trust/#signing-images-with-docker-content-trust)
 
 /!\ Be sure to save in a safe place your root key
+
 /!\ Do not use the repository or root key here, use a created delegated key
 
 ```yml

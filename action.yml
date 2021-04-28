@@ -13,6 +13,11 @@ inputs:
   private-key-passphrase:
     description: 'The Docker private key passphrase'
     required: true
+
+branding:
+    icon: "feather"
+    color: gray-dark
+
 runs:
   using: "composite"
   steps:
