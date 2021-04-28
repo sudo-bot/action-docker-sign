@@ -32,6 +32,10 @@ runs:
       env:
         DOCKER_CONTENT_TRUST_REPOSITORY_PASSPHRASE: "${{ inputs.private-key-passphrase }}"
         DOCKER_CONTENT_TRUST: 1
+    - run: docker push "${{ inputs.image-ref }}"
+      shell: sh
+      env:
+        DOCKER_CONTENT_TRUST: 1
     - run: docker trust inspect --pretty "${{ inputs.image-ref }}"
       shell: sh
       env:
