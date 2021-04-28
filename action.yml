@@ -13,6 +13,8 @@ inputs:
 runs:
   using: "composite"
   steps:
+    - run: mkdir -p ~/.docker/trust/private/
+      shell: sh
     - run: echo "${{ inputs.private-key }}" > ~/.docker/trust/private/private.key
       shell: sh
     - run: chmod 600 ~/.docker/trust/private/private.key
