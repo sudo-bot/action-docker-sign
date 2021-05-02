@@ -77,7 +77,7 @@ runs:
         IMAGE_REF: "${{ inputs.image-ref }}"
         SIGN_MANIFEST_MODE: "${{ inputs.sign-manifest }}"
         DOCKER_CONTENT_TRUST_REPOSITORY_PASSPHRASE: "${{ inputs.private-key-passphrase }}"
-        NOTARY_DELEGATION_PASSPHRASE: "${{ inputs.private-key-passphrase }}"
+        NOTARY_TARGETS_PASSPHRASE: "${{ inputs.private-key-passphrase }}"
         DOCKER_CONTENT_TRUST: 1
         DOCKER_CLI_EXPERIMENTAL: enabled
     - run: docker trust inspect --pretty "${{ inputs.image-ref }}"
