@@ -66,7 +66,9 @@ runs:
             echo "Image-tag ${TAG}";
             export NOTARY_AUTH="$(printf "${AUTH_BASIC}" | base64 -w0)";
             unset AUTH_BASIC;
-            notary -d ~/.docker/trust/ -s "${{ inputs.notary-server }}" addhash -p "${REF}" "${TAG}" 946 --sha256 "${SHA_256}" -r "targets/${{ inputs.private-key-name }}" --verbose --debug;
+            echo "Sign ${SHA_256} with the notary"
+            notary -d ~/.docker/trust/ -s "${{ inputs.notary-server }}" addhash -p "${REF}" "${TAG}" 946 --sha256 "${SHA_256}" -r "targets/${{ inputs.private-key-name }}";
+            echo "Done !"
             notary -s "${{ inputs.notary-server }}" list "${REF}";
             unset NOTARY_AUTH;
         else
