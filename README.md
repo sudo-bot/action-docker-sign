@@ -143,9 +143,9 @@ notary list docker.io/botsudo/nut-upsd
 docker pull docker.io/botsudo/nut-upsd:latest --disable-content-trust=false
 ```
 
-### Exporting a key
+## Exporting a key
 
-## In the "Notary format"
+### In the "Notary format"
 
 Ref: https://github.com/theupdateframework/notary/issues/1363
 Ref: https://github.com/docker/cli/issues/1095#issuecomment-423707423
