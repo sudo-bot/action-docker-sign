@@ -59,7 +59,7 @@ runs:
         if [ "${SIGN_MANIFEST_MODE}" = "true" ]; then
             REF="$(echo "${IMAGE_REF}" | cut -d ':' -f 1)";
             TAG="$(echo "${IMAGE_REF}" | cut -d ':' -f 2)";
-            notary init -d ~/.docker/trust/ "${REF}"
+            notary init -s "${{ inputs.notary-server }}" -d ~/.docker/trust/ "${REF}"
             notary key list -d ~/.docker/trust/
             SHA_256="$(docker manifest push "${IMAGE_REF}" | cut -d ':' -f 2)";
             echo "Manifest SHA-256: ${SHA_256}";
