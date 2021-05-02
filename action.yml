@@ -66,7 +66,6 @@ runs:
             echo "Image-tag ${TAG}";
             export NOTARY_AUTH="$(printf "${AUTH_BASIC}" | base64 -w0)";
             unset AUTH_BASIC;
-            notary -s "${{ inputs.notary-server }}" list "${REF}";
             notary -d ~/.docker/trust/ -s "${{ inputs.notary-server }}" addhash -p "${REF}" "${TAG}" 946 --sha256 "${SHA_256}" -r "targets/${{ inputs.private-key-name }}" --verbose --debug;
             notary -s "${{ inputs.notary-server }}" list "${REF}";
             unset NOTARY_AUTH;
@@ -79,8 +78,6 @@ runs:
         IMAGE_REF: "${{ inputs.image-ref }}"
         SIGN_MANIFEST_MODE: "${{ inputs.sign-manifest }}"
         DOCKER_CONTENT_TRUST_REPOSITORY_PASSPHRASE: "${{ inputs.private-key-passphrase }}"
-        NOTARY_TARGETS_PASSPHRASE: "${{ inputs.private-key-passphrase }}"
-        NOTARY_SNAPSHOT_PASSPHRASE: "${{ inputs.private-key-passphrase }}"
         NOTARY_DELEGATION_PASSPHRASE: "${{ inputs.private-key-passphrase }}"
         DOCKER_CONTENT_TRUST: 1
         DOCKER_CLI_EXPERIMENTAL: enabled
