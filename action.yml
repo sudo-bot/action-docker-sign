@@ -57,10 +57,11 @@ runs:
         DOCKER_CONTENT_TRUST: 1
     - run: |
         if [ "${SIGN_MANIFEST_MODE}" = "true" ]; then
-            notary key list -d ~/.docker/trust/
-            SHA_256="$(docker manifest push "${IMAGE_REF}" | cut -d ':' -f 2)";
             REF="$(echo "${IMAGE_REF}" | cut -d ':' -f 1)";
             TAG="$(echo "${IMAGE_REF}" | cut -d ':' -f 2)";
+            notary init -d ~/.docker/trust/ "${REF}"
+            notary key list -d ~/.docker/trust/
+            SHA_256="$(docker manifest push "${IMAGE_REF}" | cut -d ':' -f 2)";
             echo "Manifest SHA-256: ${SHA_256}";
             export NOTARY_AUTH="$(printf "${AUTH_BASIC}" | base64 -w0)";
             unset AUTH_BASIC;
