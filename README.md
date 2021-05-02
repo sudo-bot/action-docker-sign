@@ -151,5 +151,5 @@ Ref: https://github.com/theupdateframework/notary/issues/1363
 Ref: https://github.com/docker/cli/issues/1095#issuecomment-423707423
 
 ```sh
-notary key export -d ~/.docker_signer/trust --key 46afe37834b3f7f7f76f5f9cfb77d7a8a3383353581cdf74236dcf43df0260e4
+notary key export -d ~/.docker/trust --key 46afe37834b3f7f7f76f5f9cfb77d7a8a3383353581cdf74236dcf43df0260e4
 ```
