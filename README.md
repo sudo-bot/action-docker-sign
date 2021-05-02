@@ -119,6 +119,14 @@ DOCKER_CLI_EXPERIMENTAL=enabled docker manifest create docker.io/botsudo/nut-ups
     docker.io/botsudo/nut-upsd:ppc64le-latest
 ```
 
+### Push a manifest
+
+Use `--amend` to update it.
+
+```sh
+DOCKER_CLI_EXPERIMENTAL=enabled docker manifest push docker.io/botsudo/nut-upsd:latest
+```
+
 ### Sign it
 
 ```sh
