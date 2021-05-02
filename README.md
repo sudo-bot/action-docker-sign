@@ -101,3 +101,36 @@ notary delegation list docker.io/botsudo/action-scrutinizer -s https://notary.do
 docker trust signer add --key williamdes.pub williamdes docker.io/botsudo/action-scrutinizer
 docker trust signer add --key williamdes.pub williamdes docker.io/botsudo/action-scrutinizer:latest
 ```
+
+## Sign multi platform manifests
+
+A solution for: https://github.com/docker/buildx/issues/313 and https://github.com/docker/cli/issues/392
+
+### Make a manifest
+
+Use `--amend` to update it.
+
+```sh
+DOCKER_CLI_EXPERIMENTAL=enabled docker manifest create docker.io/botsudo/nut-upsd:latest \
+    docker.io/botsudo/nut-upsd:arm64-latest \
+    docker.io/botsudo/nut-upsd:amd64-latest \
+    docker.io/botsudo/nut-upsd:armv7-latest \
+    docker.io/botsudo/nut-upsd:armv6-latest \
+    docker.io/botsudo/nut-upsd:ppc64le-latest
+```
+
+### Sign it
+
+```sh
+notary addhash -p docker.io/botsudo/nut-upsd latest 946 --sha256 ${MANIFEST_SHA_FROM_ABOVE_COMMAND} -r targets/sudo-bot
+```
+
+### See the results
+
+Check the SHAs !!
+
+```sh
+docker trust inspect docker.io/botsudo/nut-upsd --pretty
+notary list docker.io/botsudo/nut-upsd
+docker pull docker.io/botsudo/nut-upsd:latest --disable-content-trust=false
+```
