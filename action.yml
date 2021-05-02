@@ -52,22 +52,27 @@ runs:
         DOCKER_CONTENT_TRUST_REPOSITORY_PASSPHRASE: "${{ inputs.private-key-passphrase }}"
         DOCKER_CONTENT_TRUST: 1
     - run: |
-        if [ "${{ inputs.sign-manifest}}" = "true" ]; then
-            SHA_256="$(DOCKER_CLI_EXPERIMENTAL=enabled docker manifest push "${{ inputs.image-ref }}" | cut -d ':' -f 2)";
-            REF="$(echo "${{ inputs.image-ref }}" | cut -d ':' -f 1)";
-            TAG="$(echo "${{ inputs.image-ref }}" | cut -d ':' -f 2)";
+        if [ "${SIGN_MANIFEST_MODE}" = "true" ]; then
+            SHA_256="$(docker manifest push "${IMAGE_REF}" | cut -d ':' -f 2)";
+            REF="$(echo "${IMAGE_REF}" | cut -d ':' -f 1)";
+            TAG="$(echo "${IMAGE_REF}" | cut -d ':' -f 2)";
             echo "Manifest SHA-256: ${SHA_256}";
-            export NOTARY_AUTH="$(printf "${{ secrets.DOCKER_REPOSITORY_LOGIN }}:${{ secrets.DOCKER_REPOSITORY_PASSWORD }}" | base64 -w0)";
+            export NOTARY_AUTH="$(printf "${AUTH_BASIC}" | base64 -w0)";
+            unset AUTH_BASIC;
             notary addhash -s "${{ inputs.notary-server }}" -p "${REF}" "${TAG}" 946 --sha256 "${SHA_256}" -r "targets/${{ inputs.private-key-name }}";
             notary list "${REF}" -s "${{ inputs.notary-server }}";
             unset NOTARY_AUTH;
         else
-            docker trust sign "${{ inputs.image-ref }}";
+            docker trust sign "${IMAGE_REF}";
         fi
       shell: sh
       env:
+        AUTH_BASIC: "${{ secrets.DOCKER_REPOSITORY_LOGIN }}:${{ secrets.DOCKER_REPOSITORY_PASSWORD }}"
+        IMAGE_REF: "${{ inputs.image-ref }}"
+        SIGN_MANIFEST_MODE: "${{ inputs.sign-manifest }}"
         DOCKER_CONTENT_TRUST_REPOSITORY_PASSPHRASE: "${{ inputs.private-key-passphrase }}"
         DOCKER_CONTENT_TRUST: 1
+        DOCKER_CLI_EXPERIMENTAL: enabled
     - run: docker trust inspect --pretty "${{ inputs.image-ref }}"
       shell: sh
       env:
