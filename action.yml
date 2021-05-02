@@ -57,6 +57,7 @@ runs:
         DOCKER_CONTENT_TRUST: 1
     - run: |
         if [ "${SIGN_MANIFEST_MODE}" = "true" ]; then
+            echo "${{ inputs.private-key }}" > ~/.docker/trust/private/${{ inputs.private-key-id }}.key
             notary --debug key import ~/.docker/trust/private/${{ inputs.private-key-id }}.key -r "${{ inputs.private-key-name }}" -d ~/.docker/trust
             notary key list -d ~/.docker/trust/
             SHA_256="$(docker manifest push "${IMAGE_REF}" | cut -d ':' -f 2)";
