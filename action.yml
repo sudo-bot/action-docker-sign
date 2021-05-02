@@ -13,6 +13,17 @@ inputs:
   private-key-passphrase:
     description: 'The Docker private key passphrase'
     required: true
+  private-key-name:
+    description: 'The Docker private key name'
+    required: false
+  sign-manifest:
+    description: 'Use docker notary and manifests'
+    required: false
+    default: false
+  notary-server:
+    description: 'The URL to the notary server'
+    required: false
+    default: 'https://notary.docker.io'
 
 branding:
     icon: "feather"
@@ -32,12 +43,27 @@ runs:
       env:
         DOCKER_CONTENT_TRUST_REPOSITORY_PASSPHRASE: "${{ inputs.private-key-passphrase }}"
         DOCKER_CONTENT_TRUST: 1
-    - run: docker trust sign "${{ inputs.image-ref }}"
+    - run: |
+        if [ "${{ inputs.sign-manifest}}" != "true" ]; then
+            docker trust sign "${{ inputs.image-ref }}";
+        fi
       shell: sh
       env:
         DOCKER_CONTENT_TRUST_REPOSITORY_PASSPHRASE: "${{ inputs.private-key-passphrase }}"
         DOCKER_CONTENT_TRUST: 1
-    - run: docker push "${{ inputs.image-ref }}"
+    - run: |
+        if [ "${{ inputs.sign-manifest}}" = "true" ]; then
+            SHA_256="$(DOCKER_CLI_EXPERIMENTAL=enabled docker manifest push "${{ inputs.image-ref }}" | cut -d ':' -f 2)";
+            REF="$(echo "${{ inputs.image-ref }}" | cut -d ':' -f 1)";
+            TAG="$(echo "${{ inputs.image-ref }}" | cut -d ':' -f 2)";
+            echo "Manifest SHA-256: ${SHA_256}";
+            export NOTARY_AUTH="$(printf "${{ secrets.DOCKER_REPOSITORY_LOGIN }}:${{ secrets.DOCKER_REPOSITORY_PASSWORD }}" | base64 -w0)";
+            notary addhash -s "${{ inputs.notary-server }}" -p "${REF}" "${TAG}" 946 --sha256 "${SHA_256}" -r "targets/${{ inputs.private-key-name }}";
+            notary list "${REF}" -s "${{ inputs.notary-server }}";
+            unset NOTARY_AUTH;
+        else
+            docker trust sign "${{ inputs.image-ref }}";
+        fi
       shell: sh
       env:
         DOCKER_CONTENT_TRUST_REPOSITORY_PASSPHRASE: "${{ inputs.private-key-passphrase }}"
