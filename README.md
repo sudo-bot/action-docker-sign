@@ -233,8 +233,11 @@ DOCKER_CLI_EXPERIMENTAL=enabled docker manifest push docker.io/botsudo/nut-upsd:
 
 ### Sign it
 
+My testing show you need to sign manifests with the repository key otherwise pull will not work.
+So do not use `-r targets/sudo-bot`
+
 ```sh
-notary addhash -p docker.io/botsudo/nut-upsd latest 946 --sha256 ${MANIFEST_SHA_FROM_ABOVE_COMMAND} -r targets/sudo-bot
+notary addhash -p docker.io/botsudo/nut-upsd latest 946 --sha256 ${MANIFEST_SHA_FROM_ABOVE_COMMAND}
 ```
 
 ### See the results
