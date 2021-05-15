@@ -65,14 +65,13 @@ runs:
             REF="$(echo "${IMAGE_REF}" | cut -d ':' -f 1)";
             TAG="$(echo "${IMAGE_REF}" | cut -d ':' -f 2)";
             notary key list -d ~/.docker/trust/
-            SHA_256="$(docker manifest push "${IMAGE_REF}" | cut -d ':' -f 2)";
+            SHA_256="$(docker manifest push "${IMAGE_REF}" --purge | cut -d ':' -f 2)";
             echo "Manifest SHA-256: ${SHA_256}";
             echo "Image-ref: ${REF}";
             echo "Image-tag ${TAG}";
             export NOTARY_AUTH="$(printf "${AUTH_BASIC}" | base64 -w0)";
             unset AUTH_BASIC;
             echo "Sign ${SHA_256} with the notary"
-            notary -d ~/.docker/trust/ -s "${{ inputs.notary-server }}" remove "${REF}" "${TAG}" ${ROLE_CLI} --publish --verbose || echo 'skipped';
             notary -d ~/.docker/trust/ -s "${{ inputs.notary-server }}" addhash "${REF}" "${TAG}" 946 --sha256 "${SHA_256}" ${ROLE_CLI} --publish --verbose;
             echo "Done !"
             notary -s "${{ inputs.notary-server }}" list "${REF}";

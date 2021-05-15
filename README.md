@@ -202,6 +202,7 @@ docker.io/botsudo/action-docker-compose:latest
 
 ```sh
 notary delegation list docker.io/botsudo/action-scrutinizer -s https://notary.docker.io
+docker trust sign --local docker.io/botsudo/action-scrutinizer:latest
 docker trust signer add --key williamdes.pub williamdes docker.io/botsudo/action-scrutinizer
 docker trust signer add --key williamdes.pub williamdes docker.io/botsudo/action-scrutinizer:latest
 ```
