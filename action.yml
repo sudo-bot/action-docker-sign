@@ -78,7 +78,7 @@ runs:
             notary -s "${{ inputs.notary-server }}" list "${REF}";
             unset NOTARY_AUTH;
         else
-            docker trust sign "${IMAGE_REF}";
+            docker trust sign --local "${IMAGE_REF}";
         fi
       shell: sh
       env:

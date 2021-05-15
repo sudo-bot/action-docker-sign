@@ -142,10 +142,10 @@ jobs:
           uses: sudo-bot/action-docker-sign@latest
           with:
             image-ref: "docker.io/botsudo/nut-upsd:latest"
+            # Please use the repository key for the manufest or pull will not work
             private-key-id: "${{ secrets.DOCKER_PRIVATE_KEY_ID }}"
             private-key: ${{ secrets.DOCKER_PRIVATE_KEY }}
             private-key-passphrase: ${{ secrets.DOCKER_PRIVATE_KEY_PASSPHRASE }}
-            private-key-name: ${{ secrets.DOCKER_PRIVATE_KEY_NAME }}
             sign-manifest: true
             notary-auth: "${{ secrets.DOCKER_REPOSITORY_LOGIN }}:${{ secrets.DOCKER_REPOSITORY_PASSWORD }}"
 
