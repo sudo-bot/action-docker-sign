@@ -226,10 +226,11 @@ DOCKER_CLI_EXPERIMENTAL=enabled docker manifest create docker.io/botsudo/nut-ups
 
 ### Push a manifest
 
-Use `--amend` to update it.
+Purge is needed to be sure next time you create the manifest it updates the images.
+Ref: [comment](https://github.com/docker/cli/issues/954#issuecomment-586722447)
 
 ```sh
-DOCKER_CLI_EXPERIMENTAL=enabled docker manifest push docker.io/botsudo/nut-upsd:latest
+DOCKER_CLI_EXPERIMENTAL=enabled docker manifest push docker.io/botsudo/nut-upsd:latest --purge
 ```
 
 ### Sign it
