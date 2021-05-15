@@ -56,6 +56,11 @@ runs:
         DOCKER_CONTENT_TRUST_REPOSITORY_PASSPHRASE: "${{ inputs.private-key-passphrase }}"
         DOCKER_CONTENT_TRUST: 1
     - run: |
+        ROLE_CLI='';
+        if [ ! -z "${{ inputs.private-key-name }}" ]; then
+            echo "Roles: targets/${{ inputs.private-key-name }}";
+            ROLE_CLI="--roles \"targets/${{ inputs.private-key-name }}\""
+        fi
         if [ "${SIGN_MANIFEST_MODE}" = "true" ]; then
             REF="$(echo "${IMAGE_REF}" | cut -d ':' -f 1)";
             TAG="$(echo "${IMAGE_REF}" | cut -d ':' -f 2)";
@@ -67,8 +72,8 @@ runs:
             export NOTARY_AUTH="$(printf "${AUTH_BASIC}" | base64 -w0)";
             unset AUTH_BASIC;
             echo "Sign ${SHA_256} with the notary"
-            notary -d ~/.docker/trust/ -s "${{ inputs.notary-server }}" remove "${REF}" "${TAG}" --roles "targets/${{ inputs.private-key-name }}" --publish --verbose || echo 'skipped';
-            notary -d ~/.docker/trust/ -s "${{ inputs.notary-server }}" addhash "${REF}" "${TAG}" 946 --sha256 "${SHA_256}" --roles "targets/${{ inputs.private-key-name }}" --publish --verbose;
+            notary -d ~/.docker/trust/ -s "${{ inputs.notary-server }}" remove "${REF}" "${TAG}" ${ROLE_CLI} --publish --verbose || echo 'skipped';
+            notary -d ~/.docker/trust/ -s "${{ inputs.notary-server }}" addhash "${REF}" "${TAG}" 946 --sha256 "${SHA_256}" ${ROLE_CLI} --publish --verbose;
             echo "Done !"
             notary -s "${{ inputs.notary-server }}" list "${REF}";
             unset NOTARY_AUTH;
