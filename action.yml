@@ -48,20 +48,22 @@ runs:
         DOCKER_CONTENT_TRUST_REPOSITORY_PASSPHRASE: "${{ inputs.private-key-passphrase }}"
         DOCKER_CONTENT_TRUST: 1
     - run: |
-        if [ "${{ inputs.sign-manifest}}" != "true" ]; then
-            docker trust sign "${{ inputs.image-ref }}";
+        if [ "${SIGN_MANIFEST_MODE}" != "true" ]; then
+            docker trust sign --local "${IMAGE_REF}";
         fi
       shell: sh
       env:
         DOCKER_CONTENT_TRUST_REPOSITORY_PASSPHRASE: "${{ inputs.private-key-passphrase }}"
         DOCKER_CONTENT_TRUST: 1
+        SIGN_MANIFEST_MODE: "${{ inputs.sign-manifest }}"
+        IMAGE_REF: "${{ inputs.image-ref }}"
     - run: |
-        ROLE_CLI='';
-        if [ ! -z "${{ inputs.private-key-name }}" ]; then
-            echo "Roles: targets/${{ inputs.private-key-name }}";
-            ROLE_CLI="--roles \"targets/${{ inputs.private-key-name }}\""
-        fi
         if [ "${SIGN_MANIFEST_MODE}" = "true" ]; then
+            ROLE_CLI='';
+            if [ ! -z "${{ inputs.private-key-name }}" ]; then
+                echo "Roles: targets/${{ inputs.private-key-name }}";
+                ROLE_CLI="--roles \"targets/${{ inputs.private-key-name }}\""
+            fi
             REF="$(echo "${IMAGE_REF}" | cut -d ':' -f 1)";
             TAG="$(echo "${IMAGE_REF}" | cut -d ':' -f 2)";
             notary key list -d ~/.docker/trust/
@@ -76,8 +78,6 @@ runs:
             echo "Done !"
             notary -s "${{ inputs.notary-server }}" list "${REF}";
             unset NOTARY_AUTH;
-        else
-            docker trust sign --local "${IMAGE_REF}";
         fi
       shell: sh
       env:
