@@ -84,15 +84,10 @@ runs:
             echo "Image-tag: ${TAG}";
             MANIFEST_FROM_REG="$(docker manifest inspect "${IMAGE_REF}" -v)";
             echo "Manifest: ${MANIFEST_FROM_REG}";
-            BYTES_SIZE="$(printf "${MANIFEST_FROM_REG}" | jq -r '.Descriptor.size')";
+            BYTES_SIZE="$(printf "${MANIFEST_FROM_REG}" | jq -r '.[].Descriptor.size')";
             echo "Manifest-inspect BYTES: ${BYTES_SIZE}";
-            SHA_256_FROM_REG="$(printf "${MANIFEST_FROM_REG}" | jq -r '.Descriptor.digest' | cut -d ':' -f 2)";
+            printf "${MANIFEST_FROM_REG}" | jq -r '.[].Descriptor | "Architecture: " + .platform.architecture + .platform.variant + ", digest: " + .digest'
             echo "Manifest-inspect SHA-256: ${SHA_256_FROM_REG}";
-            if [ "${SHA_256}" != "${SHA_256_FROM_REG}" ]; then
-                printf 'The hashes do not match, stopping the process.\nExpected: %s\nWas: %s' \
-                    "${SHA_256}" "${SHA_256_FROM_REG}";
-                exit 1;
-            fi
             export NOTARY_AUTH="$(printf "${AUTH_BASIC}" | base64 -w0)";
             unset AUTH_BASIC;
             echo "Sign ${SHA_256} with the notary"
@@ -111,6 +106,10 @@ runs:
         DOCKER_CONTENT_TRUST: 1
         DOCKER_CLI_EXPERIMENTAL: enabled
     - run: docker trust inspect --pretty "${{ inputs.image-ref }}"
+      shell: sh
+      env:
+        DOCKER_CONTENT_TRUST: 1
+    - run: notary list "${{ inputs.image-ref }}"
       shell: sh
       env:
         DOCKER_CONTENT_TRUST: 1
