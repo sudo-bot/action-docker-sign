@@ -109,10 +109,6 @@ runs:
       shell: sh
       env:
         DOCKER_CONTENT_TRUST: 1
-    - run: notary list "${{ inputs.image-ref }}"
-      shell: sh
-      env:
-        DOCKER_CONTENT_TRUST: 1
     - run: rm ~/.docker/trust/private/${{ inputs.private-key-id }}.key
       shell: sh
     - run: rm -rf ~/.docker/trust/private
