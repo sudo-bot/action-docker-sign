@@ -48,6 +48,7 @@ runs:
         DOCKER_CONTENT_TRUST_REPOSITORY_PASSPHRASE: "${{ inputs.private-key-passphrase }}"
         DOCKER_CONTENT_TRUST: 1
     - run: |
+        set -eu;
         if [ "${SIGN_MANIFEST_MODE}" != "true" ]; then
             docker trust sign --local "${IMAGE_REF}";
         fi
@@ -57,7 +58,17 @@ runs:
         DOCKER_CONTENT_TRUST: 1
         SIGN_MANIFEST_MODE: "${{ inputs.sign-manifest }}"
         IMAGE_REF: "${{ inputs.image-ref }}"
+    # install jq if missing, should never happen
     - run: |
+        set -eu;
+        if [ "${SIGN_MANIFEST_MODE}" = "true" ]; then
+            jq --version || curl -sS https://webinstall.dev/jq | bash;
+        fi
+      shell: sh
+      env:
+        SIGN_MANIFEST_MODE: "${{ inputs.sign-manifest }}"
+    - run: |
+        set -eu;
         if [ "${SIGN_MANIFEST_MODE}" = "true" ]; then
             ROLE_CLI='';
             if [ ! -z "${{ inputs.private-key-name }}" ]; then
@@ -71,10 +82,20 @@ runs:
             echo "Manifest SHA-256: ${SHA_256}";
             echo "Image-ref: ${REF}";
             echo "Image-tag ${TAG}";
+            MANIFEST_FROM_REG="$(docker manifest inspect "${IMAGE_REF}" -v)";
+            BYTES_SIZE="$(printf "${MANIFEST_FROM_REG}" | jq -r '.Descriptor.size')";
+            SHA_256_FROM_REG="$(printf "${MANIFEST_FROM_REG}" | jq -r '.Descriptor.digest' | cut -d ':' -f 2)";
+            if [ "${SHA_256}" != "${SHA_256_FROM_REG}" ]; then
+                printf 'The hashes do not match, stopping the process.\nExpected: %s\nWas: %s' \
+                    "${SHA_256}" "${SHA_256_FROM_REG}";
+                exit 1;
+            fi
+            echo "Manifest-inspect SHA-256: ${SHA_256_FROM_REG}";
+            echo "Manifest-inspect BYTES: ${BYTES_SIZE}";
             export NOTARY_AUTH="$(printf "${AUTH_BASIC}" | base64 -w0)";
             unset AUTH_BASIC;
             echo "Sign ${SHA_256} with the notary"
-            notary -d ~/.docker/trust/ -s "${{ inputs.notary-server }}" addhash "${REF}" "${TAG}" 946 --sha256 "${SHA_256}" ${ROLE_CLI} --publish --verbose;
+            notary -d ~/.docker/trust/ -s "${{ inputs.notary-server }}" addhash "${REF}" "${TAG}" "${BYTES_SIZE}" --sha256 "${SHA_256}" ${ROLE_CLI} --publish --verbose;
             echo "Done !"
             notary -s "${{ inputs.notary-server }}" list "${REF}";
             unset NOTARY_AUTH;
