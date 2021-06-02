@@ -62,7 +62,7 @@ runs:
     - run: |
         set -eu;
         if [ "${SIGN_MANIFEST_MODE}" = "true" ]; then
-            jq --version || curl -sS https://webinstall.dev/jq | bash;
+            jq --version > /dev/null || curl -sS https://webinstall.dev/jq | bash;
         fi
       shell: sh
       env:
@@ -81,8 +81,9 @@ runs:
             SHA_256="$(docker manifest push "${IMAGE_REF}" --purge | cut -d ':' -f 2)";
             echo "Manifest SHA-256: ${SHA_256}";
             echo "Image-ref: ${REF}";
-            echo "Image-tag ${TAG}";
+            echo "Image-tag: ${TAG}";
             MANIFEST_FROM_REG="$(docker manifest inspect "${IMAGE_REF}" -v)";
+            echo "Manifest: ${MANIFEST_FROM_REG}";
             BYTES_SIZE="$(printf "${MANIFEST_FROM_REG}" | jq -r '.Descriptor.size')";
             SHA_256_FROM_REG="$(printf "${MANIFEST_FROM_REG}" | jq -r '.Descriptor.digest' | cut -d ':' -f 2)";
             if [ "${SHA_256}" != "${SHA_256_FROM_REG}" ]; then
