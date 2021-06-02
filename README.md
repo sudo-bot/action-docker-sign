@@ -293,6 +293,8 @@ Using manifests always did give `946` for `${BYTES_SIZE}` for some reason, but n
 
 **Example:** I had signed an image with my local key, and then I released a version that was signed by the CI key. When I listed using `notary list` the signed value by the CI was not showing. After removing my signature of the previous value it worked fine.
 
+This [website](https://containers.gitbook.io/build-containers-the-hard-way/#registry-format-oci-image-manifest) is helpfull to know more about how manifests are built.
+
 ### See the results
 
 Check the SHAs !!
