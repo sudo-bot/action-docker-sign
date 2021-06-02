@@ -235,12 +235,63 @@ DOCKER_CLI_EXPERIMENTAL=enabled docker manifest push docker.io/botsudo/nut-upsd:
 
 ### Sign it
 
-My testing show you need to sign manifests with the repository key otherwise pull will not work.
+My testing show you need to sign **manifests** with the repository key otherwise pull will not work.
 So do not use `-r targets/sudo-bot`
 
+If you do not use a manifest you can use the same key as the one to sign the image, anyway you should not even be reading this because the image is already signed at this point.
+
+#### Fetch and check the values
+
+Set the repo to work on
+
 ```sh
-notary addhash -p docker.io/botsudo/nut-upsd latest 946 --sha256 ${MANIFEST_SHA_FROM_ABOVE_COMMAND}
+REPO="botsudo/nut-upsd"
 ```
+
+Get a token (per $REPO)
+
+```sh
+AUTH_BASIC_FROM_DOCKER_CREDS_IN_BASE64="$(cat ~/.docker/config.json | jq -r '.auths."https://index.docker.io/v1/".auth')"
+DT="$(curl -s "https://auth.docker.io/token?service=registry.docker.io&scope=repository:${REPO}:pull" -H "Authorization: Basic ${AUTH_BASIC_FROM_DOCKER_CREDS_IN_BASE64}" | jq -r '.token')"
+# This is usefull if you will do commands using the "notary" program
+export NOTARY_AUTH="${AUTH_BASIC_FROM_DOCKER_CREDS_IN_BASE64}"
+```
+
+Fetch the manifest bytes count (Gives: `946` bytes for this example)
+
+```sh
+BYTES_SIZE="$(curl -H 'Accept: application/vnd.docker.distribution.manifest.v2+json' https://registry-1.docker.io/v2/$REPO/manifests/latest -H "Authorization: Bearer $DT" -XGET | wc -c)"
+```
+
+Fetch the manifest sha-256 sum (Gives: `19ab62db03bf648a8a884ddcdefca9b9e8cdbd97613e66dc454466c2d4b3bc3b` for this example)
+
+```sh
+SHA="$(curl -H 'Accept: application/vnd.docker.distribution.manifest.list.v2+json' https://registry-1.docker.io/v2/$REPO/manifests/latest -H "Authorization: Bearer $DT" -XGET | sha256sum)"
+```
+
+Source: [for the skopeo command](https://www.unboundtech.com/docs/UKC/UKC_Code_Signing_IG/HTML/Content/Products/UKC-EKM/UKC_Code_Signing_IG/Notary/notary_overview.htm)
+
+The `BYTES_SIZE` bytes length can be fetched using [skopeo](https://github.com/containers/skopeo): `skopeo inspect --raw docker://docker.io/$REPO | wc -c` **and should match `${BYTES_SIZE}`**.
+
+And the hash from `skopeo inspect --raw docker://docker.io/$REPO | sha256sum` **should match `${MANIFEST_SHA_FROM_ABOVE_COMMAND}`**
+
+Last method to get the values: `DOCKER_CLI_EXPERIMENTAL=enabled docker manifest inspect docker.io/$REPO -v | jq '.Descriptor'`, `digest` and `size` should be coherent with `${MANIFEST_SHA_FROM_ABOVE_COMMAND}` and `${BYTES_SIZE}`.
+
+#### Add the hash to notary
+
+```sh
+notary addhash -p docker.io/$REPO latest ${BYTES_SIZE} --sha256 ${MANIFEST_SHA_FROM_ABOVE_COMMAND}
+```
+
+You can remove it if you need: `notary remove docker.io/$REPO latest -r targets/williamdes --publish` (`targets/williamdes` can be removed depending on what key signed the value to remove).
+
+#### Some usefull notes
+
+Using manifests always did give `946` for `${BYTES_SIZE}` for some reason, but not on single signed images.
+
+**A very important note:** `notary list docker.io/botsudo/nut-upsd` can list the bad last signed value, like it was hiding another value behind it. This is why I use `notary remove` when I can not get the same value as the one the signing CI printed out at the end of the process.
+
+**Example:** I had signed an image with my local key, and then I released a version that was signed by the CI key. When I listed using `notary list` the signed value by the CI was not showing. After removing my signature of the previous value it worked fine.
 
 ### See the results
 
