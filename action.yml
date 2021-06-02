@@ -83,11 +83,10 @@ runs:
             echo "Image-ref: ${REF}";
             echo "Image-tag: ${TAG}";
             MANIFEST_FROM_REG="$(docker manifest inspect "${IMAGE_REF}" -v)";
-            echo "Manifest: ${MANIFEST_FROM_REG}";
-            BYTES_SIZE="$(printf "${MANIFEST_FROM_REG}" | jq -r '.[].Descriptor.size')";
+            BYTES_SIZE="$(printf "${MANIFEST_FROM_REG}" | jq -r '.[].Descriptor.size' | uniq)";
             echo "Manifest-inspect BYTES: ${BYTES_SIZE}";
-            printf "${MANIFEST_FROM_REG}" | jq -r '.[].Descriptor | "Architecture: " + .platform.architecture + .platform.variant + ", digest: " + .digest'
-            echo "Manifest-inspect SHA-256: ${SHA_256_FROM_REG}";
+            echo "Manifest contents:\n";
+            printf "${MANIFEST_FROM_REG}" | jq -r '.[].Descriptor | "Architecture: " + .platform.architecture + .platform.variant + ", digest: " + .digest';
             export NOTARY_AUTH="$(printf "${AUTH_BASIC}" | base64 -w0)";
             unset AUTH_BASIC;
             echo "Sign ${SHA_256} with the notary"
