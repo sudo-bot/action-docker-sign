@@ -151,6 +151,12 @@ jobs:
 
 ```
 
+## Some errors you may run into
+
+- I had filled the repository key and key Id in the ENV variables and that did throw `failed to sign docker.io/botsudo/capistrano:latest: no valid signing keys for delegation roles` to me.
+- Then I updated the contents to use the user key contents but forgot to update the key Id and that did throw `failed to sign docker.io/botsudo/capistrano:latest: The targets metadata is invalid: tuf: data has no signatures` to me.
+- When using the user key Id and key contents it did work fine.
+
 ## Inspect trust
 
 (be sure to check that the SHA matches, it will use the latest signed image if no signature has been done)
