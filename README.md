@@ -207,10 +207,13 @@ docker.io/botsudo/action-docker-compose:latest
 ## Some usefull commands
 
 ```sh
-notary delegation list docker.io/botsudo/action-scrutinizer -s https://notary.docker.io
-docker trust sign --local docker.io/botsudo/action-scrutinizer:latest
-docker trust signer add --key williamdes.pub williamdes docker.io/botsudo/action-scrutinizer
-docker trust signer add --key williamdes.pub williamdes docker.io/botsudo/action-scrutinizer:latest
+notary delegation list docker.io/botsudo/capistrano -s https://notary.docker.io
+docker trust signer add --key ./key-name-or-user-name.pub key-name-or-user-name docker.io/botsudo/capistrano
+# To remove it (if you did not use the right key)
+docker trust signer remove williamdes docker.io/botsudo/capistrano
+notary delegation list docker.io/botsudo/capistrano -s https://notary.docker.io
+# Using --local or not may change the results of what you are trying to do
+docker trust sign --local docker.io/botsudo/capistrano:latest
 ```
 
 ## Sign multi platform manifests
