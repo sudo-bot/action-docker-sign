@@ -96,7 +96,7 @@ runs:
         unset AUTH_BASIC;
         export DOCKER_TOKEN="$(curl -s "https://auth.docker.io/token?service=registry.docker.io&scope=repository:${REPO}:pull" -H "Authorization: Basic ${NOTARY_AUTH}" | jq -r '.token')"
         BYTES_SIZE="$(curl -H 'Accept: application/vnd.docker.distribution.manifest.list.v2+json' https://registry-1.docker.io/v2/$REPO/manifests/$TAG -H "Authorization: Bearer $DOCKER_TOKEN" -XGET | wc -c)"
-        SHA_256="$(curl -H 'Accept: application/vnd.docker.distribution.manifest.list.v2+json' https://registry-1.docker.io/v2/$REPO/manifests/$TAG -H "Authorization: Bearer $DOCKER_TOKEN" -XGET | sha256sum)"
+        SHA_256="$(curl -H 'Accept: application/vnd.docker.distribution.manifest.list.v2+json' https://registry-1.docker.io/v2/$REPO/manifests/$TAG -H "Authorization: Bearer $DOCKER_TOKEN" -XGET | sha256sum | cut -d ' ' -f 1)"
         echo "Manifest SHA-256: ${SHA_256}";
         echo "Manifest-inspect BYTES: ${BYTES_SIZE}";
         ROLE_CLI='';

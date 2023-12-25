@@ -286,7 +286,7 @@ echo "Manifest size in bytes: $BYTES_SIZE"
 Fetch the manifest sha-256 sum (Gives: `51b67269f354137895d43f3b3d810bfacd3945438e94dc5ac55fdac340352f48` for this example)
 
 ```sh
-SHA="$(curl -H 'Accept: application/vnd.docker.distribution.manifest.list.v2+json' https://registry-1.docker.io/v2/$REPO/manifests/$TAG -H "Authorization: Bearer $DT" -XGET | sha256sum)"
+SHA="$(curl -H 'Accept: application/vnd.docker.distribution.manifest.list.v2+json' https://registry-1.docker.io/v2/$REPO/manifests/$TAG -H "Authorization: Bearer $DT" -XGET | sha256sum | cut -d ' ' -f 1)"
 echo "Manifest sha-256: $SHA"
 ```
 
@@ -302,7 +302,7 @@ echo "Manifest size in bytes: $BYTES_SIZE"
 Fetch the manifest sha-256 sum (Gives: `beba5cb5ae49ec8185c999869d20de9ba5e6b2badebe65c1163a31906e65d413` for this example)
 
 ```sh
-SHA="$(curl -H 'Accept: application/vnd.docker.distribution.manifest.v2+json' https://registry-1.docker.io/v2/$REPO/manifests/$TAG -H "Authorization: Bearer $DT" -XGET | sha256sum)"
+SHA="$(curl -H 'Accept: application/vnd.docker.distribution.manifest.v2+json' https://registry-1.docker.io/v2/$REPO/manifests/$TAG -H "Authorization: Bearer $DT" -XGET | sha256sum | cut -d ' ' -f 1)"
 echo "Manifest sha-256: $SHA"
 ```
 
