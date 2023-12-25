@@ -51,6 +51,11 @@ runs:
       env:
         DOCKER_CONTENT_TRUST_REPOSITORY_PASSPHRASE: "${{ inputs.private-key-passphrase }}"
         DOCKER_CONTENT_TRUST: "1"
+    - name: List trust keys
+      run: notary key list -d ~/.docker/trust/
+      shell: sh
+      env:
+        DOCKER_CONTENT_TRUST: "1"
     - name: Sign the local image (not a manifest)
       run: docker trust sign --local "${IMAGE_REF}"
       shell: sh
@@ -81,25 +86,30 @@ runs:
       if: ${{ fromJSON(inputs.sign-manifest) }}
       run: |
         set -eu;
+        REPO="$(echo "${IMAGE_REF}" | cut -d ':' -f 1 | sed 's!docker.io/!!')";
+        REF="$(echo "${IMAGE_REF}" | cut -d ':' -f 1)";
+        TAG="$(echo "${IMAGE_REF}" | cut -d ':' -f 2)";
+        echo "Image-ref: ${REF}";
+        echo "Image-tag: ${TAG}";
+        echo "Repo-name: ${REPO}";
         export NOTARY_AUTH="$(printf "${AUTH_BASIC}" | base64 -w0)";
         unset AUTH_BASIC;
+        export DOCKER_TOKEN="$(curl -s "https://auth.docker.io/token?service=registry.docker.io&scope=repository:${REPO}:pull" -H "Authorization: Basic ${NOTARY_AUTH}" | jq -r '.token')"
+        BYTES_SIZE="$(curl -H 'Accept: application/vnd.docker.distribution.manifest.list.v2+json' https://registry-1.docker.io/v2/$REPO/manifests/$TAG -H "Authorization: Bearer $DOCKER_TOKEN" -XGET | wc -c)"
+        SHA_256="$(curl -H 'Accept: application/vnd.docker.distribution.manifest.list.v2+json' https://registry-1.docker.io/v2/$REPO/manifests/$TAG -H "Authorization: Bearer $DOCKER_TOKEN" -XGET | sha256sum)"
+        echo "Manifest SHA-256: ${SHA_256}";
+        echo "Manifest-inspect BYTES: ${BYTES_SIZE}";
         ROLE_CLI='';
         if [ ! -z "${{ inputs.private-key-name }}" ]; then
             echo "Roles: targets/${{ inputs.private-key-name }}";
             ROLE_CLI="--roles \"targets/${{ inputs.private-key-name }}\""
         fi
-        REF="$(echo "${IMAGE_REF}" | cut -d ':' -f 1)";
-        TAG="$(echo "${IMAGE_REF}" | cut -d ':' -f 2)";
-        notary key list -d ~/.docker/trust/
-        echo "Manifest SHA-256: ${SHA_256}";
-        echo "Image-ref: ${REF}";
-        echo "Image-tag: ${TAG}";
-        echo "Manifest-inspect BYTES: ${BYTES_SIZE}";
         echo "Sign ${SHA_256} with the notary"
         notary -s "${{ inputs.notary-server }}" -d ~/.docker/trust/ addhash "${REF}" "${TAG}" "${BYTES_SIZE}" --sha256 "${SHA_256}" ${ROLE_CLI} --publish --verbose;
         echo "Done !"
         notary -s "${{ inputs.notary-server }}" list "${REF}";
         unset NOTARY_AUTH;
+        unset DOCKER_TOKEN;
       shell: sh
       env:
         AUTH_BASIC: "${{ inputs.notary-auth }}"
