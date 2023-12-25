@@ -2,7 +2,7 @@ name: 'docker-sign'
 description: 'Sign docker images'
 inputs:
   image-ref:
-    description: 'The Docker image ref, example: imagename:tag'
+    description: 'The Docker image ref, example: <imagename>:<tag>'
     required: true
   private-key-id:
     description: 'The Docker private key id (hash)'
@@ -19,7 +19,7 @@ inputs:
   sign-manifest:
     description: 'Use docker notary and manifests'
     required: false
-    default: false
+    default: "false"
   notary-server:
     description: 'The URL to the notary server'
     required: false
@@ -36,6 +36,15 @@ branding:
 runs:
   using: "composite"
   steps:
+    - uses: actions/setup-go@v4
+      with:
+        go-version: '^1.17'
+    - run: |
+        go install -tags pkcs11 github.com/theupdateframework/notary/cmd/notary@latest
+        notary --help
+      shell: sh
+      env:
+        GO111MODULE: "on"
     - run: mkdir -p ~/.docker/trust/private/
       shell: sh
     - run: echo "${{ inputs.private-key }}" > ~/.docker/trust/private/${{ inputs.private-key-id }}.key
@@ -46,7 +55,7 @@ runs:
       shell: sh
       env:
         DOCKER_CONTENT_TRUST_REPOSITORY_PASSPHRASE: "${{ inputs.private-key-passphrase }}"
-        DOCKER_CONTENT_TRUST: 1
+        DOCKER_CONTENT_TRUST: "1"
     - run: |
         set -eu;
         if [ "${SIGN_MANIFEST_MODE}" != "true" ]; then
@@ -55,7 +64,7 @@ runs:
       shell: sh
       env:
         DOCKER_CONTENT_TRUST_REPOSITORY_PASSPHRASE: "${{ inputs.private-key-passphrase }}"
-        DOCKER_CONTENT_TRUST: 1
+        DOCKER_CONTENT_TRUST: "1"
         SIGN_MANIFEST_MODE: "${{ inputs.sign-manifest }}"
         IMAGE_REF: "${{ inputs.image-ref }}"
     # install jq if missing, should never happen
@@ -102,12 +111,12 @@ runs:
         SIGN_MANIFEST_MODE: "${{ inputs.sign-manifest }}"
         DOCKER_CONTENT_TRUST_REPOSITORY_PASSPHRASE: "${{ inputs.private-key-passphrase }}"
         NOTARY_DELEGATION_PASSPHRASE: "${{ inputs.private-key-passphrase }}"
-        DOCKER_CONTENT_TRUST: 1
+        DOCKER_CONTENT_TRUST: "1"
         DOCKER_CLI_EXPERIMENTAL: enabled
     - run: docker trust inspect --pretty "${{ inputs.image-ref }}"
       shell: sh
       env:
-        DOCKER_CONTENT_TRUST: 1
+        DOCKER_CONTENT_TRUST: "1"
     - run: rm ~/.docker/trust/private/${{ inputs.private-key-id }}.key
       shell: sh
     - run: rm -rf ~/.docker/trust/private
