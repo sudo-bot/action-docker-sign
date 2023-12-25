@@ -36,83 +36,86 @@ branding:
 runs:
   using: "composite"
   steps:
-    - uses: actions/setup-go@v4
+    - name: Create the trust keys folder
+      run: mkdir -p ~/.docker/trust/private/
+      shell: sh
+    - name: Write the trust key
+      run: echo "${{ inputs.private-key }}" > ~/.docker/trust/private/${{ inputs.private-key-id }}.key
+      shell: sh
+    - name: Chmod the trust key
+      run: chmod 600 ~/.docker/trust/private/${{ inputs.private-key-id }}.key
+      shell: sh
+    - name: Load the trust key
+      run: docker trust key load ~/.docker/trust/private/${{ inputs.private-key-id }}.key
+      shell: sh
+      env:
+        DOCKER_CONTENT_TRUST_REPOSITORY_PASSPHRASE: "${{ inputs.private-key-passphrase }}"
+        DOCKER_CONTENT_TRUST: "1"
+    - name: Sign the local image (not a manifest)
+      run: docker trust sign --local "${IMAGE_REF}"
+      shell: sh
+      if: ${{ ! fromJSON(inputs.sign-manifest) }}
+      env:
+        DOCKER_CONTENT_TRUST_REPOSITORY_PASSPHRASE: "${{ inputs.private-key-passphrase }}"
+        DOCKER_CONTENT_TRUST: "1"
+        IMAGE_REF: "${{ inputs.image-ref }}"
+    # install jq if missing, should never happen
+    - name: Install jq if not found
+      run: jq --version > /dev/null || curl -sS https://webinstall.dev/jq | bash
+      shell: sh
+      if: ${{ fromJSON(inputs.sign-manifest) }}
+    - name: Setup go
+      uses: actions/setup-go@v4
+      if: ${{ fromJSON(inputs.sign-manifest) }}
       with:
         go-version: '^1.17'
-    - run: |
+    - name: Setup the notary tool
+      run: |
         go install -tags pkcs11 github.com/theupdateframework/notary/cmd/notary@latest
         notary --help
       shell: sh
+      if: ${{ fromJSON(inputs.sign-manifest) }}
       env:
         GO111MODULE: "on"
-    - run: mkdir -p ~/.docker/trust/private/
-      shell: sh
-    - run: echo "${{ inputs.private-key }}" > ~/.docker/trust/private/${{ inputs.private-key-id }}.key
-      shell: sh
-    - run: chmod 600 ~/.docker/trust/private/${{ inputs.private-key-id }}.key
-      shell: sh
-    - run: docker trust key load ~/.docker/trust/private/${{ inputs.private-key-id }}.key
-      shell: sh
-      env:
-        DOCKER_CONTENT_TRUST_REPOSITORY_PASSPHRASE: "${{ inputs.private-key-passphrase }}"
-        DOCKER_CONTENT_TRUST: "1"
-    - run: |
+    - name: Sign the manifest
+      if: ${{ fromJSON(inputs.sign-manifest) }}
+      run: |
         set -eu;
-        if [ "${SIGN_MANIFEST_MODE}" != "true" ]; then
-            docker trust sign --local "${IMAGE_REF}";
+        export NOTARY_AUTH="$(printf "${AUTH_BASIC}" | base64 -w0)";
+        unset AUTH_BASIC;
+        ROLE_CLI='';
+        if [ ! -z "${{ inputs.private-key-name }}" ]; then
+            echo "Roles: targets/${{ inputs.private-key-name }}";
+            ROLE_CLI="--roles \"targets/${{ inputs.private-key-name }}\""
         fi
-      shell: sh
-      env:
-        DOCKER_CONTENT_TRUST_REPOSITORY_PASSPHRASE: "${{ inputs.private-key-passphrase }}"
-        DOCKER_CONTENT_TRUST: "1"
-        SIGN_MANIFEST_MODE: "${{ inputs.sign-manifest }}"
-        IMAGE_REF: "${{ inputs.image-ref }}"
-    # install jq if missing, should never happen
-    - run: |
-        set -eu;
-        if [ "${SIGN_MANIFEST_MODE}" = "true" ]; then
-            jq --version > /dev/null || curl -sS https://webinstall.dev/jq | bash;
-        fi
-      shell: sh
-      env:
-        SIGN_MANIFEST_MODE: "${{ inputs.sign-manifest }}"
-    - run: |
-        set -eu;
-        if [ "${SIGN_MANIFEST_MODE}" = "true" ]; then
-            export NOTARY_AUTH="$(printf "${AUTH_BASIC}" | base64 -w0)";
-            unset AUTH_BASIC;
-            ROLE_CLI='';
-            if [ ! -z "${{ inputs.private-key-name }}" ]; then
-                echo "Roles: targets/${{ inputs.private-key-name }}";
-                ROLE_CLI="--roles \"targets/${{ inputs.private-key-name }}\""
-            fi
-            REF="$(echo "${IMAGE_REF}" | cut -d ':' -f 1)";
-            TAG="$(echo "${IMAGE_REF}" | cut -d ':' -f 2)";
-            notary key list -d ~/.docker/trust/
-            echo "Manifest SHA-256: ${SHA_256}";
-            echo "Image-ref: ${REF}";
-            echo "Image-tag: ${TAG}";
-            echo "Manifest-inspect BYTES: ${BYTES_SIZE}";
-            echo "Sign ${SHA_256} with the notary"
-            notary -s "${{ inputs.notary-server }}" -d ~/.docker/trust/ addhash "${REF}" "${TAG}" "${BYTES_SIZE}" --sha256 "${SHA_256}" ${ROLE_CLI} --publish --verbose;
-            echo "Done !"
-            notary -s "${{ inputs.notary-server }}" list "${REF}";
-            unset NOTARY_AUTH;
-        fi
+        REF="$(echo "${IMAGE_REF}" | cut -d ':' -f 1)";
+        TAG="$(echo "${IMAGE_REF}" | cut -d ':' -f 2)";
+        notary key list -d ~/.docker/trust/
+        echo "Manifest SHA-256: ${SHA_256}";
+        echo "Image-ref: ${REF}";
+        echo "Image-tag: ${TAG}";
+        echo "Manifest-inspect BYTES: ${BYTES_SIZE}";
+        echo "Sign ${SHA_256} with the notary"
+        notary -s "${{ inputs.notary-server }}" -d ~/.docker/trust/ addhash "${REF}" "${TAG}" "${BYTES_SIZE}" --sha256 "${SHA_256}" ${ROLE_CLI} --publish --verbose;
+        echo "Done !"
+        notary -s "${{ inputs.notary-server }}" list "${REF}";
+        unset NOTARY_AUTH;
       shell: sh
       env:
         AUTH_BASIC: "${{ inputs.notary-auth }}"
         IMAGE_REF: "${{ inputs.image-ref }}"
-        SIGN_MANIFEST_MODE: "${{ inputs.sign-manifest }}"
         DOCKER_CONTENT_TRUST_REPOSITORY_PASSPHRASE: "${{ inputs.private-key-passphrase }}"
         NOTARY_DELEGATION_PASSPHRASE: "${{ inputs.private-key-passphrase }}"
         DOCKER_CONTENT_TRUST: "1"
         DOCKER_CLI_EXPERIMENTAL: enabled
-    - run: docker trust inspect --pretty "${{ inputs.image-ref }}"
+    - name: Inspect the trust
+      run: docker trust inspect --pretty "${{ inputs.image-ref }}"
       shell: sh
       env:
         DOCKER_CONTENT_TRUST: "1"
-    - run: rm ~/.docker/trust/private/${{ inputs.private-key-id }}.key
+    - name: Cleanup the trust key
+      run: rm -v ~/.docker/trust/private/${{ inputs.private-key-id }}.key
       shell: sh
-    - run: rm -rf ~/.docker/trust/private
+    - name: Cleanup the trust keys folder
+      run: rm -rvf ~/.docker/trust/private
       shell: sh
