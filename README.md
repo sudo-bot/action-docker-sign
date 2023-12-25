@@ -243,37 +243,78 @@ If you do not use a manifest you can use the same key as the one to sign the ima
 Set the repo to work on
 
 ```sh
-REPO="botsudo/nut-upsd"
+export REPO="library/alpine"
+export TAG="3.19.0"
 ```
 
 Get a token (per $REPO)
 
 ```sh
 AUTH_BASIC_FROM_DOCKER_CREDS_IN_BASE64="$(cat ~/.docker/config.json | jq -r '.auths."https://index.docker.io/v1/".auth')"
-DT="$(curl -s "https://auth.docker.io/token?service=registry.docker.io&scope=repository:${REPO}:pull" -H "Authorization: Basic ${AUTH_BASIC_FROM_DOCKER_CREDS_IN_BASE64}" | jq -r '.token')"
 # This is usefull if you will do commands using the "notary" program
 export NOTARY_AUTH="${AUTH_BASIC_FROM_DOCKER_CREDS_IN_BASE64}"
+DT="$(curl -s "https://auth.docker.io/token?service=registry.docker.io&scope=repository:${REPO}:pull" -H "Authorization: Basic ${AUTH_BASIC_FROM_DOCKER_CREDS_IN_BASE64}" | jq -r '.token')"
 ```
 
-Fetch the manifest bytes count (Gives: `946` bytes for this example)
+##### Fetch the data to verify
 
 ```sh
-BYTES_SIZE="$(curl -H 'Accept: application/vnd.docker.distribution.manifest.v2+json' https://registry-1.docker.io/v2/$REPO/manifests/latest -H "Authorization: Bearer $DT" -XGET | wc -c)"
+# Recent example: multi arch manifest
+$ notary -s https://notary.docker.io list docker.io/library/alpine | grep -P "^$TAG"
+3.19.0             51b67269f354137895d43f3b3d810bfacd3945438e94dc5ac55fdac340352f48    1638            targets
+
+# Second older example: a manifest with only one arch
+$ notary -s https://notary.docker.io list docker.io/library/alpine | grep -P "^$TAG"
+3.5                66952b313e51c3bd1987d7c4ddf5dba9bc0fb6e524eed2448fa660246b3e76ec    433             targets
+
+# Other example
+notary -s https://notary.docker.io list docker.io/botsudo/action-docker-compose
+NAME      DIGEST                                                              SIZE (BYTES)    ROLE
+----      ------                                                              ------------    ----
+latest    beba5cb5ae49ec8185c999869d20de9ba5e6b2badebe65c1163a31906e65d413    947             targets/releases
 ```
 
-Fetch the manifest sha-256 sum (Gives: `19ab62db03bf648a8a884ddcdefca9b9e8cdbd97613e66dc454466c2d4b3bc3b` for this example)
+##### Verify it (only for manifests: a.k.a multi arch images)
+
+Fetch the manifest bytes count (Gives: `1638` bytes for this example)
 
 ```sh
-SHA="$(curl -H 'Accept: application/vnd.docker.distribution.manifest.list.v2+json' https://registry-1.docker.io/v2/$REPO/manifests/latest -H "Authorization: Bearer $DT" -XGET | sha256sum)"
+BYTES_SIZE="$(curl -H 'Accept: application/vnd.docker.distribution.manifest.list.v2+json' https://registry-1.docker.io/v2/$REPO/manifests/$TAG -H "Authorization: Bearer $DT" -XGET | wc -c)"
+echo "Manifest size in bytes: $BYTES_SIZE"
 ```
 
-Source: [for the skopeo command](https://www.unboundtech.com/docs/UKC/UKC_Code_Signing_IG/HTML/Content/Products/UKC-EKM/UKC_Code_Signing_IG/Notary/notary_overview.htm)
+Fetch the manifest sha-256 sum (Gives: `51b67269f354137895d43f3b3d810bfacd3945438e94dc5ac55fdac340352f48` for this example)
+
+```sh
+SHA="$(curl -H 'Accept: application/vnd.docker.distribution.manifest.list.v2+json' https://registry-1.docker.io/v2/$REPO/manifests/$TAG -H "Authorization: Bearer $DT" -XGET | sha256sum)"
+echo "Manifest sha-256: $SHA"
+```
+
+##### Verify it (only for images that are NOT multiarch)
+
+Fetch the manifest bytes count (Gives: `947` bytes for this example)
+
+```sh
+BYTES_SIZE="$(curl -H 'Accept: application/vnd.docker.distribution.manifest.v2+json' https://registry-1.docker.io/v2/$REPO/manifests/$TAG -H "Authorization: Bearer $DT" -XGET | wc -c)"
+echo "Manifest size in bytes: $BYTES_SIZE"
+```
+
+Fetch the manifest sha-256 sum (Gives: `beba5cb5ae49ec8185c999869d20de9ba5e6b2badebe65c1163a31906e65d413` for this example)
+
+```sh
+SHA="$(curl -H 'Accept: application/vnd.docker.distribution.manifest.v2+json' https://registry-1.docker.io/v2/$REPO/manifests/$TAG -H "Authorization: Bearer $DT" -XGET | sha256sum)"
+echo "Manifest sha-256: $SHA"
+```
+
+##### More notes
+
+Source: [~~for the skopeo command~~](https://www.unboundtech.com/docs/UKC/UKC_Code_Signing_IG/HTML/Content/Products/UKC-EKM/UKC_Code_Signing_IG/Notary/notary_overview.htm)
 
 The `BYTES_SIZE` bytes length can be fetched using [skopeo](https://github.com/containers/skopeo): `skopeo inspect --raw docker://docker.io/$REPO | wc -c` **and should match `${BYTES_SIZE}`**.
 
-And the hash from `skopeo inspect --raw docker://docker.io/$REPO | sha256sum` **should match `${MANIFEST_SHA_FROM_ABOVE_COMMAND}`**
+And the hash from `skopeo inspect --raw docker://docker.io/$REPO | sha256sum` **should match `${SHA}`**
 
-Last method to get the values: `DOCKER_CLI_EXPERIMENTAL=enabled docker manifest inspect docker.io/$REPO -v | jq '.Descriptor'`, `digest` and `size` should be coherent with `${MANIFEST_SHA_FROM_ABOVE_COMMAND}` and `${BYTES_SIZE}`.
+Last method to get the values: `DOCKER_CLI_EXPERIMENTAL=enabled docker manifest inspect docker.io/$REPO -v | jq '.Descriptor'`, `digest` and `size` should be coherent with `${SHA}` and `${BYTES_SIZE}`.
 
 #### Add the hash to notary
 
