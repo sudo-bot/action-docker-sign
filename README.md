@@ -19,21 +19,23 @@ on:
        - 'latest'
 
 jobs:
-  push_to_registry:
+  push-to-registry:
     name: Push Docker image to Docker hub
     runs-on: ubuntu-latest
     steps:
         - name: Check out the repository
-          uses: actions/checkout@v2
+          uses: actions/checkout@v4
         - name: Login to DockerHub
-          uses: docker/login-action@v1
+          uses: docker/login-action@v2
           with:
             registry: docker.io
             username: ${{ secrets.DOCKER_REPOSITORY_LOGIN }}
             password: ${{ secrets.DOCKER_REPOSITORY_PASSWORD }}
         - name: Build action image
           # Use any good build command and be sure to tag the image correctly
-          run: IMAGE_TAG="docker.io/botsudo/action-docker-compose:latest" make docker-build
+          run: make docker-build
+          env:
+            IMAGE_TAG: "docker.io/botsudo/action-docker-compose:latest"
 
         - name: Sign and push docker image
           uses: sudo-bot/action-docker-sign@latest
@@ -57,7 +59,7 @@ on:
        - 'v*'
 
 jobs:
-  push_to_registry:
+  push-to-registry:
     name: Push Docker image to Docker hub
     runs-on: ubuntu-latest
     strategy:
@@ -80,48 +82,34 @@ jobs:
 
     steps:
         - name: Check out the repository
-          uses: actions/checkout@v2
+          uses: actions/checkout@v4
         - name: Login to DockerHub
-          uses: docker/login-action@v1
+          uses: docker/login-action@v2
           with:
             registry: docker.io
             username: ${{ secrets.DOCKER_REPOSITORY_LOGIN }}
             password: ${{ secrets.DOCKER_REPOSITORY_PASSWORD }}
         # https://github.com/docker/setup-qemu-action
         - name: Set up QEMU
-          uses: docker/setup-qemu-action@v1
+          uses: docker/setup-qemu-action@v2
         # https://github.com/docker/setup-buildx-action
         - name: Set up Docker Buildx
-          uses: docker/setup-buildx-action@v1
+          uses: docker/setup-buildx-action@v2
         - name: Build action image
-          run: PLATFORM="${{ matrix.platform }}" IMAGE_TAG="docker.io/botsudo/nut-upsd:${{ matrix.platform-tag }}-latest" make docker-build
+          run: make docker-build
           env:
             DOCKER_BUILDKIT: 1
-
-        - name: Sign and push docker image
-          uses: sudo-bot/action-docker-sign@latest
-          with:
-            image-ref: "docker.io/botsudo/nut-upsd:${{ matrix.platform-tag }}-latest"
-            private-key-id: "${{ secrets.DOCKER_PRIVATE_KEY_ID }}"
-            private-key: ${{ secrets.DOCKER_PRIVATE_KEY }}
-            private-key-passphrase: ${{ secrets.DOCKER_PRIVATE_KEY_PASSPHRASE }}
+            PLATFORM: "${{ matrix.platform }}"
+            IMAGE_TAG: "docker.io/botsudo/nut-upsd:${{ matrix.platform-tag }}-latest"
+            ACTION: push
 
   sign-manifest:
     name: Sign the docker hub manifest
     runs-on: ubuntu-latest
-    needs: push_to_registry
+    needs: push-to-registry
     steps:
-        - uses: actions/setup-go@v2
-          with:
-            go-version: '^1.12'
-        - name: 'Install module'
-          run: |
-            export GO111MODULE=on
-            go get github.com/theupdateframework/notary
-            go install -tags pkcs11 github.com/theupdateframework/notary/cmd/notary@latest
-            notary --help
         - name: Login to DockerHub
-          uses: docker/login-action@v1
+          uses: docker/login-action@v2
           with:
             registry: docker.io
             username: ${{ secrets.DOCKER_REPOSITORY_LOGIN }}
@@ -142,11 +130,12 @@ jobs:
           uses: sudo-bot/action-docker-sign@latest
           with:
             image-ref: "docker.io/botsudo/nut-upsd:latest"
-            # Please use the repository key for the manufest or pull will not work
+            # Sign the manifest
+            sign-manifest: true
+            # Please use the repository key for the manifest or pull will not work
             private-key-id: "${{ secrets.DOCKER_PRIVATE_KEY_ID }}"
             private-key: ${{ secrets.DOCKER_PRIVATE_KEY }}
             private-key-passphrase: ${{ secrets.DOCKER_PRIVATE_KEY_PASSPHRASE }}
-            sign-manifest: true
             notary-auth: "${{ secrets.DOCKER_REPOSITORY_LOGIN }}:${{ secrets.DOCKER_REPOSITORY_PASSWORD }}"
 
 ```
