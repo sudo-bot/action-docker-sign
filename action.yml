@@ -17,7 +17,7 @@ inputs:
     description: 'The Docker private key name'
     required: false
   sign-manifest:
-    description: 'Use docker notary and manifests'
+    description: 'Use docker notary and sign the manifest'
     required: false
     default: "false"
   notary-server:
@@ -79,6 +79,8 @@ runs:
     - run: |
         set -eu;
         if [ "${SIGN_MANIFEST_MODE}" = "true" ]; then
+            export NOTARY_AUTH="$(printf "${AUTH_BASIC}" | base64 -w0)";
+            unset AUTH_BASIC;
             ROLE_CLI='';
             if [ ! -z "${{ inputs.private-key-name }}" ]; then
                 echo "Roles: targets/${{ inputs.private-key-name }}";
@@ -87,19 +89,12 @@ runs:
             REF="$(echo "${IMAGE_REF}" | cut -d ':' -f 1)";
             TAG="$(echo "${IMAGE_REF}" | cut -d ':' -f 2)";
             notary key list -d ~/.docker/trust/
-            SHA_256="$(docker manifest push "${IMAGE_REF}" --purge | cut -d ':' -f 2)";
             echo "Manifest SHA-256: ${SHA_256}";
             echo "Image-ref: ${REF}";
             echo "Image-tag: ${TAG}";
-            MANIFEST_FROM_REG="$(docker manifest inspect "${IMAGE_REF}" -v)";
-            BYTES_SIZE="$(printf "${MANIFEST_FROM_REG}" | jq -r '.[].Descriptor.size' | uniq)";
             echo "Manifest-inspect BYTES: ${BYTES_SIZE}";
-            echo "Manifest contents:\n";
-            printf "${MANIFEST_FROM_REG}" | jq -r '.[].Descriptor | "Architecture: " + .platform.architecture + .platform.variant + ", digest: " + .digest';
-            export NOTARY_AUTH="$(printf "${AUTH_BASIC}" | base64 -w0)";
-            unset AUTH_BASIC;
             echo "Sign ${SHA_256} with the notary"
-            notary -d ~/.docker/trust/ -s "${{ inputs.notary-server }}" addhash "${REF}" "${TAG}" "${BYTES_SIZE}" --sha256 "${SHA_256}" ${ROLE_CLI} --publish --verbose;
+            notary -s "${{ inputs.notary-server }}" -d ~/.docker/trust/ addhash "${REF}" "${TAG}" "${BYTES_SIZE}" --sha256 "${SHA_256}" ${ROLE_CLI} --publish --verbose;
             echo "Done !"
             notary -s "${{ inputs.notary-server }}" list "${REF}";
             unset NOTARY_AUTH;
