@@ -51,6 +51,19 @@ runs:
       env:
         DOCKER_CONTENT_TRUST_REPOSITORY_PASSPHRASE: "${{ inputs.private-key-passphrase }}"
         DOCKER_CONTENT_TRUST: "1"
+    - name: Setup go
+      uses: actions/setup-go@v4
+      if: ${{ fromJSON(inputs.sign-manifest) }}
+      with:
+        go-version: '^1.17'
+    - name: Setup the notary tool
+      run: |
+        go install -tags pkcs11 github.com/theupdateframework/notary/cmd/notary@latest
+        notary --help
+      shell: sh
+      if: ${{ fromJSON(inputs.sign-manifest) }}
+      env:
+        GO111MODULE: "on"
     - name: List trust keys
       run: notary key list -d ~/.docker/trust/
       shell: sh
@@ -69,19 +82,6 @@ runs:
       run: jq --version > /dev/null || curl -sS https://webinstall.dev/jq | bash
       shell: sh
       if: ${{ fromJSON(inputs.sign-manifest) }}
-    - name: Setup go
-      uses: actions/setup-go@v4
-      if: ${{ fromJSON(inputs.sign-manifest) }}
-      with:
-        go-version: '^1.17'
-    - name: Setup the notary tool
-      run: |
-        go install -tags pkcs11 github.com/theupdateframework/notary/cmd/notary@latest
-        notary --help
-      shell: sh
-      if: ${{ fromJSON(inputs.sign-manifest) }}
-      env:
-        GO111MODULE: "on"
     - name: Sign the manifest
       if: ${{ fromJSON(inputs.sign-manifest) }}
       run: |
