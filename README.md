@@ -10,8 +10,12 @@ You can forge the key following [this manual](https://docs.docker.com/engine/sec
 
 /!\ Do not use the repository or root key here, use a created delegated key
 
-```yml
+```yaml
 name: Publish Docker image on tag push
+
+permissions:
+  contents: read
+
 on:
   push:
     tags:
@@ -51,92 +55,110 @@ jobs:
 
 ## Example with docker buildx using manifests
 
-```yml
+```yaml
 name: Publish Docker image
+
+permissions:
+    contents: read
+
 on:
-  push:
-    tags:
-       - 'v*'
+    push:
+        tags:
+            - "v*"
 
 jobs:
-  push-to-registry:
-    name: Push Docker image to Docker hub
-    runs-on: ubuntu-latest
-    strategy:
-        fail-fast: false
-        max-parallel: 2
-        matrix:
-            include:
-                # All non supported by base image are commented
-                # This is an example for base image alpine
-                - { platform: "linux/arm64", platform-tag: "arm64" }
-                - { platform: "linux/amd64", platform-tag: "amd64" }
-                - { platform: "linux/arm/v7", platform-tag: "armv7" }
-                - { platform: "linux/arm/v6", platform-tag: "armv6" }
-                - { platform: "linux/ppc64le", platform-tag: "ppc64le" }
-                #- { platform: "linux/riscv64", platform-tag: "riscv64" }
-                - { platform: "linux/s390x", platform-tag: "s390x" }
-                - { platform: "linux/386", platform-tag: "386" }
-                #- { platform: "linux/mips64le", platform-tag: "mips64le" }
-                #- { platform: "linux/mips64", platform-tag: "mips64" }
+    push-to-registry:
+        name: Push Docker image to Docker hub
+        runs-on: ubuntu-latest
+        strategy:
+            fail-fast: false
+            max-parallel: 4
+            matrix:
+                include:
+                    # All non supported by base image are commented
+                    # This is an example for base image alpine
+                    - { platform: "linux/arm64", platform-tag: "arm64" }
+                    - { platform: "linux/amd64", platform-tag: "amd64" }
+                    - { platform: "linux/arm/v7", platform-tag: "armv7" }
+                    - { platform: "linux/arm/v6", platform-tag: "armv6" }
+                    - { platform: "linux/ppc64le", platform-tag: "ppc64le" }
+                    #- { platform: "linux/riscv64", platform-tag: "riscv64" }
+                    - { platform: "linux/s390x", platform-tag: "s390x" }
+                    - { platform: "linux/386", platform-tag: "386" }
+                    #- { platform: "linux/mips64le", platform-tag: "mips64le" }
+                    #- { platform: "linux/mips64", platform-tag: "mips64" }
 
-    steps:
-        - name: Check out the repository
-          uses: actions/checkout@v4
-        - name: Login to DockerHub
-          uses: docker/login-action@v2
-          with:
-            registry: docker.io
-            username: ${{ secrets.DOCKER_REPOSITORY_LOGIN }}
-            password: ${{ secrets.DOCKER_REPOSITORY_PASSWORD }}
-        # https://github.com/docker/setup-qemu-action
-        - name: Set up QEMU
-          uses: docker/setup-qemu-action@v2
-        # https://github.com/docker/setup-buildx-action
-        - name: Set up Docker Buildx
-          uses: docker/setup-buildx-action@v2
-        - name: Build action image
-          run: make docker-build
-          env:
-            DOCKER_BUILDKIT: 1
-            PLATFORM: "${{ matrix.platform }}"
-            IMAGE_TAG: "docker.io/botsudo/nut-upsd:${{ matrix.platform-tag }}-latest"
-            ACTION: push
+        steps:
+            - name: Check out the repository
+              uses: actions/checkout@v4
+            - name: Login to DockerHub
+              uses: docker/login-action@v2
+              with:
+                  registry: docker.io
+                  username: ${{ secrets.DOCKER_REPOSITORY_LOGIN }}
+                  password: ${{ secrets.DOCKER_REPOSITORY_PASSWORD }}
+            # https://github.com/docker/setup-qemu-action
+            - name: Set up QEMU
+              uses: docker/setup-qemu-action@v2
+            # https://github.com/docker/setup-buildx-action
+            - name: Set up Docker Buildx
+              uses: docker/setup-buildx-action@v2
+            - name: Build and push the image
+              run: make docker-build
+              env:
+                  DOCKER_BUILDKIT: 1
+                  PLATFORM: "${{ matrix.platform }}"
+                  IMAGE_TAG: "docker.io/botsudo/nut-upsd:${{ matrix.platform-tag }}-latest"
+                  ACTION: push
 
-  sign-manifest:
-    name: Sign the docker hub manifest
-    runs-on: ubuntu-latest
-    needs: push-to-registry
-    steps:
-        - name: Login to DockerHub
-          uses: docker/login-action@v2
-          with:
-            registry: docker.io
-            username: ${{ secrets.DOCKER_REPOSITORY_LOGIN }}
-            password: ${{ secrets.DOCKER_REPOSITORY_PASSWORD }}
-        - name: Create a manifest
-          run: |
-            DOCKER_CLI_EXPERIMENTAL=enabled docker manifest create docker.io/botsudo/nut-upsd:latest \
-                docker.io/botsudo/nut-upsd:arm64-latest \
-                docker.io/botsudo/nut-upsd:amd64-latest \
-                docker.io/botsudo/nut-upsd:armv7-latest \
-                docker.io/botsudo/nut-upsd:armv6-latest \
-                docker.io/botsudo/nut-upsd:ppc64le-latest \
-                docker.io/botsudo/nut-upsd:s390x-latest \
-                docker.io/botsudo/nut-upsd:386-latest \
-                --amend
+            - name: Sign the docker image
+              uses: sudo-bot/action-docker-sign@latest
+              with:
+                  image-ref: "docker.io/botsudo/nut-upsd:${{ matrix.platform-tag }}-latest"
+                  private-key-id: "${{ vars.DOCKER_PRIVATE_KEY_ID }}"
+                  # Must be exported using notary key export -d ~/.docker/trust --key ${{ vars.DOCKER_PRIVATE_KEY_ID }}
+                  # Use the delegated key or the repository key
+                  private-key: ${{ secrets.DOCKER_PRIVATE_KEY }}
+                  private-key-passphrase: ${{ secrets.DOCKER_PRIVATE_KEY_PASSPHRASE }}
 
-        - name: Sign and push the manifest
-          uses: sudo-bot/action-docker-sign@latest
-          with:
-            image-ref: "docker.io/botsudo/nut-upsd:latest"
-            # Sign the manifest
-            sign-manifest: true
-            # Please use the repository key for the manifest or pull will not work
-            private-key-id: "${{ secrets.DOCKER_PRIVATE_KEY_ID }}"
-            private-key: ${{ secrets.DOCKER_PRIVATE_KEY }}
-            private-key-passphrase: ${{ secrets.DOCKER_PRIVATE_KEY_PASSPHRASE }}
-            notary-auth: "${{ secrets.DOCKER_REPOSITORY_LOGIN }}:${{ secrets.DOCKER_REPOSITORY_PASSWORD }}"
+    sign-manifest:
+        name: Sign the docker hub manifest
+        runs-on: ubuntu-latest
+        needs: push-to-registry
+        steps:
+            - name: Login to DockerHub
+              uses: docker/login-action@v2
+              with:
+                  registry: docker.io
+                  username: ${{ secrets.DOCKER_REPOSITORY_LOGIN }}
+                  password: ${{ secrets.DOCKER_REPOSITORY_PASSWORD }}
+            - name: Create a manifest
+              env:
+                  DOCKER_CLI_EXPERIMENTAL: enabled
+              run: |
+                  docker manifest create docker.io/botsudo/nut-upsd:latest \
+                      docker.io/botsudo/nut-upsd:arm64-latest \
+                      docker.io/botsudo/nut-upsd:amd64-latest \
+                      docker.io/botsudo/nut-upsd:armv7-latest \
+                      docker.io/botsudo/nut-upsd:armv6-latest \
+                      docker.io/botsudo/nut-upsd:ppc64le-latest \
+                      docker.io/botsudo/nut-upsd:s390x-latest \
+                      docker.io/botsudo/nut-upsd:386-latest \
+                      --amend
+
+            - name: Sign the manifest
+              uses: sudo-bot/action-docker-sign@latest
+              with:
+                  image-ref: "docker.io/botsudo/nut-upsd:latest"
+                  # Sign the manifest
+                  sign-manifest: true
+                  # Use the delegated key or the repository key
+                  private-key-id: "${{ vars.DOCKER_PRIVATE_KEY_ID }}"
+                  # Remove this one if you use the repository key
+                  private-key-name: "releases" # Will be used for targets/releases
+                  private-key: ${{ secrets.DOCKER_PRIVATE_KEY }}
+                  private-key-passphrase: ${{ secrets.DOCKER_PRIVATE_KEY_PASSPHRASE }}
+                  notary-auth: "${{ secrets.DOCKER_REPOSITORY_LOGIN }}:${{ secrets.DOCKER_REPOSITORY_PASSWORD }}"
 
 ```
 
@@ -196,11 +218,14 @@ docker.io/botsudo/action-docker-compose:latest
 ## Some usefull commands
 
 ```sh
-notary delegation list docker.io/botsudo/capistrano -s https://notary.docker.io
+notary -s https://notary.docker.io delegation list docker.io/botsudo/capistrano
+# Add the key to the image as delegation
 docker trust signer add --key ./key-name-or-user-name.pub key-name-or-user-name docker.io/botsudo/capistrano
+# Or (not sure it will work as well)
+# notary -s https://notary.docker.io delegation add docker.io/botsudo/capistrano targets/releases ./key-name-or-user-name.pub --all-paths
 # To remove it (if you did not use the right key)
 docker trust signer remove williamdes docker.io/botsudo/capistrano
-notary delegation list docker.io/botsudo/capistrano -s https://notary.docker.io
+notary -s https://notary.docker.io delegation list docker.io/botsudo/capistrano
 # Using --local or not may change the results of what you are trying to do
 docker trust sign --local docker.io/botsudo/capistrano:latest
 ```
@@ -319,7 +344,7 @@ Last method to get the values: `DOCKER_CLI_EXPERIMENTAL=enabled docker manifest 
 #### Add the hash to notary
 
 ```sh
-notary addhash -p docker.io/$REPO latest ${BYTES_SIZE} --sha256 ${MANIFEST_SHA_FROM_ABOVE_COMMAND}
+notary addhash -p docker.io/$REPO ${TAG_NAME} ${BYTES_SIZE} --sha256 ${MANIFEST_SHA_FROM_ABOVE_COMMAND}
 ```
 
 You can remove it if you need: `notary remove docker.io/$REPO latest -r targets/williamdes --publish` (`targets/williamdes` can be removed depending on what key signed the value to remove).
@@ -340,8 +365,26 @@ Check the SHAs !!
 
 ```sh
 docker trust inspect docker.io/botsudo/nut-upsd --pretty
-notary list docker.io/botsudo/nut-upsd
+notary  -s https://notary.docker.io list docker.io/botsudo/nut-upsd
 docker pull docker.io/botsudo/nut-upsd:latest --disable-content-trust=false
+```
+
+## Renewing the repository metadata
+
+When you have one of the errors:
+
+`targets metadata is nearing expiry, you should re-sign the role metadata`
+- `Error getting targets/releases: valid signatures did not meet threshold for targets/releases`
+- `targets/sudo-bot metadata is nearing expiry, you should re-sign the role metadata`
+
+```sh
+docker trust inspect docker.io/botsudo/nut-upsd --pretty
+notary -d ~/.docker/trust/ -s https://notary.docker.io delegation list docker.io/botsudo/nut-upsd
+notary -d ~/.docker/trust/ -s https://notary.docker.io status docker.io/botsudo/nut-upsd
+notary -d ~/.docker/trust/ -s https://notary.docker.io witness docker.io/botsudo/nut-upsd targets/sudo-bot
+notary -d ~/.docker/trust/ -s https://notary.docker.io witness docker.io/botsudo/nut-upsd targets/releases
+notary -d ~/.docker/trust/ -s https://notary.docker.io status docker.io/botsudo/nut-upsd
+notary -d ~/.docker/trust/ -s https://notary.docker.io publish docker.io/botsudo/nut-upsd
 ```
 
 ## Exporting a key
