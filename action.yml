@@ -51,6 +51,12 @@ runs:
       env:
         DOCKER_CONTENT_TRUST_REPOSITORY_PASSPHRASE: "${{ inputs.private-key-passphrase }}"
         DOCKER_CONTENT_TRUST: "1"
+        DOCKER_CONTENT_TRUST_SERVER: "${{ inputs.notary-server }}"
+    #- name: Load the trust key
+    #  run: notary -s "${{ inputs.notary-server }}" -d ~/.docker/trust/ key import ~/.docker/trust/private/${{ inputs.private-key-id }}.key --role targets/${{ inputs.private-key-name }}
+    #  shell: sh
+    #  env:
+    #    NOTARY_DELEGATION_PASSPHRASE: "${{ inputs.private-key-passphrase }}"
     - name: Setup go
       uses: actions/setup-go@v4
       with:
@@ -74,6 +80,7 @@ runs:
       env:
         DOCKER_CONTENT_TRUST_REPOSITORY_PASSPHRASE: "${{ inputs.private-key-passphrase }}"
         DOCKER_CONTENT_TRUST: "1"
+        DOCKER_CONTENT_TRUST_SERVER: "${{ inputs.notary-server }}"
         IMAGE_REF: "${{ inputs.image-ref }}"
     # install jq if missing, should never happen
     - name: Install jq if not found
@@ -121,6 +128,7 @@ runs:
       shell: sh
       env:
         DOCKER_CONTENT_TRUST: "1"
+        DOCKER_CONTENT_TRUST_SERVER: "${{ inputs.notary-server }}"
     - name: Cleanup the trust key
       run: rm -v ~/.docker/trust/private/${{ inputs.private-key-id }}.key
       shell: sh
