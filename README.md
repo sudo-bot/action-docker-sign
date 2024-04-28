@@ -30,7 +30,7 @@ jobs:
         - name: Check out the repository
           uses: actions/checkout@v4
         - name: Login to DockerHub
-          uses: docker/login-action@v2
+          uses: docker/login-action@v3
           with:
             registry: docker.io
             username: ${{ secrets.DOCKER_REPOSITORY_LOGIN }}
@@ -92,17 +92,17 @@ jobs:
             - name: Check out the repository
               uses: actions/checkout@v4
             - name: Login to DockerHub
-              uses: docker/login-action@v2
+              uses: docker/login-action@v3
               with:
                   registry: docker.io
                   username: ${{ secrets.DOCKER_REPOSITORY_LOGIN }}
                   password: ${{ secrets.DOCKER_REPOSITORY_PASSWORD }}
             # https://github.com/docker/setup-qemu-action
             - name: Set up QEMU
-              uses: docker/setup-qemu-action@v2
+              uses: docker/setup-qemu-action@v3
             # https://github.com/docker/setup-buildx-action
             - name: Set up Docker Buildx
-              uses: docker/setup-buildx-action@v2
+              uses: docker/setup-buildx-action@v3
             - name: Build and push the image
               run: make docker-build
               env:
@@ -127,7 +127,7 @@ jobs:
         needs: push-to-registry
         steps:
             - name: Login to DockerHub
-              uses: docker/login-action@v2
+              uses: docker/login-action@v3
               with:
                   registry: docker.io
                   username: ${{ secrets.DOCKER_REPOSITORY_LOGIN }}
