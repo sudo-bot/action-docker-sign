@@ -152,13 +152,14 @@ jobs:
                   image-ref: "docker.io/botsudo/nut-upsd:latest"
                   # Sign the manifest
                   sign-manifest: true
+                  # Required to sign the manifest
+                  notary-auth: "${{ secrets.DOCKER_REPOSITORY_LOGIN }}:${{ secrets.DOCKER_REPOSITORY_PASSWORD }}"
                   # Use the delegated key or the repository key
                   private-key-id: "${{ vars.DOCKER_PRIVATE_KEY_ID }}"
                   # Remove this one if you use the repository key
                   private-key-name: "releases" # Will be used for targets/releases
                   private-key: ${{ secrets.DOCKER_PRIVATE_KEY }}
                   private-key-passphrase: ${{ secrets.DOCKER_PRIVATE_KEY_PASSPHRASE }}
-                  notary-auth: "${{ secrets.DOCKER_REPOSITORY_LOGIN }}:${{ secrets.DOCKER_REPOSITORY_PASSWORD }}"
 
 ```
 
@@ -369,7 +370,7 @@ notary  -s https://notary.docker.io list docker.io/botsudo/nut-upsd
 docker pull docker.io/botsudo/nut-upsd:latest --disable-content-trust=false
 ```
 
-## Renewing the repository metadata
+## Renewing/Re-building the repository metadata
 
 When you have one of the errors:
 
@@ -378,6 +379,9 @@ When you have one of the errors:
 - `targets/sudo-bot metadata is nearing expiry, you should re-sign the role metadata`
 
 ```sh
+# Avoid auth at each notary command
+export NOTARY_AUTH="$(printf "docker-username:docker-token" | base64 -w0)";
+
 docker trust inspect docker.io/botsudo/nut-upsd --pretty
 notary -d ~/.docker/trust/ -s https://notary.docker.io delegation list docker.io/botsudo/nut-upsd
 notary -d ~/.docker/trust/ -s https://notary.docker.io status docker.io/botsudo/nut-upsd
@@ -385,6 +389,43 @@ notary -d ~/.docker/trust/ -s https://notary.docker.io witness docker.io/botsudo
 notary -d ~/.docker/trust/ -s https://notary.docker.io witness docker.io/botsudo/nut-upsd targets/releases
 notary -d ~/.docker/trust/ -s https://notary.docker.io status docker.io/botsudo/nut-upsd
 notary -d ~/.docker/trust/ -s https://notary.docker.io publish docker.io/botsudo/nut-upsd
+```
+
+When you have one of the errors:
+- `ERRO[0001] Metadata for targets expired`
+- `ERRO[0002] Metadata for targets expired`
+- `fatal: Error retrieving delegation roles for repository docker.io/botsudo/action-docker-compose: targets expired at Sat Apr 27 14:38:05 CEST 2024`
+
+```sh
+# Purge the contents
+notary -d ~/.docker/trust/ -s https://notary.docker.io delete --remote --verbose docker.io/botsudo/action-docker-compose
+
+# Check key list
+notary -d ~/.docker/trust/ -s https://notary.docker.io key list
+# You should have the old repository key
+
+# If you make mistakes: notary -s https://notary.docker.io reset docker.io/botsudo/action-docker-compose --all
+# If you make mistakes: notary -s https://notary.docker.io -d ~/.docker/trust/ delete docker.io/botsudo/action-docker-compose
+# Init a new collection with the same old root private key as before
+notary -d ~/.docker/trust/ -s https://notary.docker.io init docker.io/botsudo/action-docker-compose --rootkey ./root_e54577868c1f326f0070b99c86ca3f17d1bb753808d73a78e7b322d379b0a04c.key -p
+
+# You should not need this
+# notary -d ~/.docker/trust/ -s https://notary.docker.io publish docker.io/botsudo/action-docker-compose
+
+# Add the target
+docker trust signer add --key ./sudo-bot.pub sudo-bot docker.io/botsudo/action-docker-compose
+
+# Check
+notary -d ~/.docker/trust/ -s https://notary.docker.io delegation list docker.io/botsudo/action-docker-compose
+docker trust inspect --pretty docker.io/botsudo/action-docker-compose
+# it shows my sudo-bot key in targets/releases and targets/sudo-bot
+
+# You may want to get rid of the snapshot key: https://stackoverflow.com/a/78830014/5155484
+notary -d ~/.docker/trust/ -s https://notary.docker.io key rotate docker.io/botsudo/action-docker-compose snapshot -r
+
+# You may want to run this commands, maybe after a tag is pushed ?
+notary -d ~/.docker/trust/ -s https://notary.docker.io witness docker.io/botsudo/action-docker-compose targets/sudo-bot
+notary -d ~/.docker/trust/ -s https://notary.docker.io witness docker.io/botsudo/action-docker-compose targets/releases
 ```
 
 ## Exporting a key
