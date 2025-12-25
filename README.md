@@ -216,7 +216,7 @@ Tagging botsudo/action-docker-compose@sha256:8729542ca14dd459473e15719924d545809
 docker.io/botsudo/action-docker-compose:latest
 ```
 
-## Some usefull commands
+## Some useful commands
 
 ```sh
 notary -s https://notary.docker.io delegation list docker.io/botsudo/capistrano
@@ -277,7 +277,7 @@ Get a token (per $REPO)
 
 ```sh
 AUTH_BASIC_FROM_DOCKER_CREDS_IN_BASE64="$(cat ~/.docker/config.json | jq -r '.auths."https://index.docker.io/v1/".auth')"
-# This is usefull if you will do commands using the "notary" program
+# This is useful if you will do commands using the "notary" program
 export NOTARY_AUTH="${AUTH_BASIC_FROM_DOCKER_CREDS_IN_BASE64}"
 DT="$(curl -s "https://auth.docker.io/token?service=registry.docker.io&scope=repository:${REPO}:pull" -H "Authorization: Basic ${AUTH_BASIC_FROM_DOCKER_CREDS_IN_BASE64}" | jq -r '.token')"
 ```
@@ -350,7 +350,7 @@ notary addhash -p docker.io/$REPO ${TAG_NAME} ${BYTES_SIZE} --sha256 ${MANIFEST_
 
 You can remove it if you need: `notary remove docker.io/$REPO latest -r targets/williamdes --publish` (`targets/williamdes` can be removed depending on what key signed the value to remove).
 
-#### Some usefull notes
+#### Some useful notes
 
 Using manifests always did give `946` for `${BYTES_SIZE}` for some reason, but not on single signed images.
 
