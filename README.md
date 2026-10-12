@@ -1,4 +1,4 @@
-# docker-sign
+# action-docker-sign
 
 > ## ⚠️ Retired
 >
@@ -10,9 +10,6 @@
 > Read **[Docker Content Trust: Retirement and Migration Guidance](https://www.docker.com/blog/docker-content-trust-retirement-and-migration-guidance/)**
 > for the full story and the migration detail.
 
-`action.yml`, `Makefile` and `.editorconfig` were dropped in `3ab4e4a`; only this
-notice and the [MPL-2.0](LICENSE) license remain.
-
 ## What to do instead
 
 - **Unblock pulls** — unset `DOCKER_CONTENT_TRUST` everywhere it is set.
@@ -21,9 +18,9 @@ notice and the [MPL-2.0](LICENSE) license remain.
 - **Enforce signatures** — [Kyverno](https://kyverno.io/) for Cosign, Ratify + Gatekeeper for Notation.
 - **Or replace the base image** — [Docker Hardened Images](https://docs.docker.com/dhi/) ship signed, with provenance attestations and SBOMs.
 
-Docker cannot re-sign on your behalf: if you published images with DCT, re-sign
-them with Cosign or Notation yourself.
+Docker cannot re-sign on your behalf: if you published images with DCT, re-sign them with Cosign or Notation yourself.
 
-## License
+## Special thanks
 
-[Mozilla Public License 2.0](LICENSE)
+Thank you to all the users that contacted me about this and where happy that I documented the commands.
+I am glad this is gone, as it was not very easy to use nor to understand.
